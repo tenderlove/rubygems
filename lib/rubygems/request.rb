@@ -100,6 +100,9 @@ class Gem::Request
     request.add_field 'User-Agent', @user_agent
     request.add_field 'Connection', 'keep-alive'
     request.add_field 'Keep-Alive', '30'
+    if Net::HTTP.const_defined?(:HAVE_ZLIB) && Net::HTTP::HAVE_ZLIB
+      request.add_field 'Accept-Encoding', 'gzip,deflate'
+    end
 
     if @last_modified then
       request.add_field 'If-Modified-Since', @last_modified.httpdate
