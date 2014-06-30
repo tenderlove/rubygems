@@ -4,11 +4,9 @@
 # See LICENSE.txt for permissions.
 #++
 
-require 'monitor'
-
 module Kernel
 
-  RUBYGEMS_ACTIVATION_MONITOR = Monitor.new # :nodoc:
+  RUBYGEMS_ACTIVATION_MUTEX = Mutex.new # :nodoc:
 
   if defined?(gem_original_require) then
     # Ruby ships with a custom_require, override its require
@@ -36,7 +34,7 @@ module Kernel
   # that file has already been loaded is preserved.
 
   def require path
-    RUBYGEMS_ACTIVATION_MONITOR.enter
+    RUBYGEMS_ACTIVATION_MUTEX.lock
 
     path = path.to_path if path.respond_to? :to_path
 
@@ -50,7 +48,7 @@ module Kernel
     # normal require handle loading a gem from the rescue below.
 
     if Gem::Specification.unresolved_deps.empty? then
-      RUBYGEMS_ACTIVATION_MONITOR.exit
+      RUBYGEMS_ACTIVATION_MUTEX.unlock
       return gem_original_require(path)
     end
 
@@ -65,7 +63,7 @@ module Kernel
     }
 
     begin
-      RUBYGEMS_ACTIVATION_MONITOR.exit
+      RUBYGEMS_ACTIVATION_MUTEX.unlock
       return gem_original_require(path)
     end if spec
 
@@ -99,7 +97,7 @@ module Kernel
       names = found_specs.map(&:name).uniq
 
       if names.size > 1 then
-        RUBYGEMS_ACTIVATION_MONITOR.exit
+        RUBYGEMS_ACTIVATION_MUTEX.unlock
         raise Gem::LoadError, "#{path} found in multiple gems: #{names.join ', '}"
       end
 
@@ -110,24 +108,24 @@ module Kernel
       unless valid then
         le = Gem::LoadError.new "unable to find a version of '#{names.first}' to activate"
         le.name = names.first
-        RUBYGEMS_ACTIVATION_MONITOR.exit
+        RUBYGEMS_ACTIVATION_MUTEX.unlock
         raise le
       end
 
       valid.activate
     end
 
-    RUBYGEMS_ACTIVATION_MONITOR.exit
+    RUBYGEMS_ACTIVATION_MUTEX.unlock
     return gem_original_require(path)
   rescue LoadError => load_error
-    RUBYGEMS_ACTIVATION_MONITOR.enter
+    RUBYGEMS_ACTIVATION_MUTEX.lock
 
     if load_error.message.start_with?("Could not find") or
         (load_error.message.end_with?(path) and Gem.try_activate(path)) then
-      RUBYGEMS_ACTIVATION_MONITOR.exit
+      RUBYGEMS_ACTIVATION_MUTEX.unlock
       return gem_original_require(path)
     else
-      RUBYGEMS_ACTIVATION_MONITOR.exit
+      RUBYGEMS_ACTIVATION_MUTEX.unlock
     end
 
     raise load_error
