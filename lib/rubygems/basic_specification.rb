@@ -316,7 +316,7 @@ class Gem::BasicSpecification
 
   def have_file? file, suffixes
     return true if raw_require_paths.any? do |path|
-      base = File.join gems_dir, full_name, path.untaint, file
+      base = File.join(gems_dir, full_name, path.untaint, file).untaint
       suffixes.any? { |suf| File.file? base + suf }
     end
 
