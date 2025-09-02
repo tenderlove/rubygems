@@ -146,33 +146,30 @@ class Gem::Package::TarHeader
   ##
   # Creates a new TarHeader using +vals+
 
-  def initialize(vals)
-    unless vals[:name] && vals[:size] && vals[:prefix] && vals[:mode]
-      raise ArgumentError, ":name, :size, :prefix and :mode required"
-    end
+  def initialize(name:, size:, prefix:, mode:, checksum: "", devmajor: 0, devminor: 0, gid: 0, gname: "wheel", linkname: nil, magic: "ustar", mtime: 0, typeflag: nil, uid: 0, uname: "wheel", version: "00", empty: nil)
 
-    @checksum = vals[:checksum] || ""
-    @devmajor = vals[:devmajor] || 0
-    @devminor = vals[:devminor] || 0
-    @gid = vals[:gid] || 0
-    @gname = vals[:gname] || "wheel"
-    @linkname = vals[:linkname]
-    @magic = vals[:magic] || "ustar"
-    @mode = vals[:mode]
-    @mtime = vals[:mtime] || 0
-    @name = vals[:name]
-    @prefix = vals[:prefix]
-    @size = vals[:size]
-    @typeflag = vals[:typeflag]
+    @checksum = checksum
+    @devmajor = devmajor
+    @devminor = devminor
+    @gid = gid
+    @gname = gname
+    @linkname = linkname
+    @magic = magic
+    @mode = mode
+    @mtime = mtime
+    @name = name
+    @prefix = prefix
+    @size = size
+    @typeflag = typeflag
     @typeflag = "0" if @typeflag.nil? || @typeflag.empty?
-    @uid = vals[:uid] || 0
-    @uname = vals[:uname] || "wheel"
-    @version = vals[:version] || "00"
+    @uid = uid
+    @uname = uname
+    @version = version
 
-    @empty = vals[:empty]
+    @empty = empty
   end
 
-  EMPTY = new({ # :nodoc:
+  EMPTY = new( # :nodoc:
     checksum: 0,
     gname: "",
     linkname: "",
@@ -185,7 +182,7 @@ class Gem::Package::TarHeader
     version: 0,
 
     empty: true,
-  }).freeze
+  ).freeze
   private_constant :EMPTY
 
   ##

@@ -23,7 +23,7 @@ class TestGemPackageTarHeader < Gem::Package::TarTestCase
       prefix: "y",
     }
 
-    @tar_header = Gem::Package::TarHeader.new header
+    @tar_header = Gem::Package::TarHeader.new **header
   end
 
   def test_self_from
@@ -84,7 +84,7 @@ class TestGemPackageTarHeader < Gem::Package::TarTestCase
       typeflag: "",
     }
 
-    tar_header = Gem::Package::TarHeader.new header
+    tar_header = Gem::Package::TarHeader.new **header
 
     assert_equal "0", tar_header.typeflag
   end
