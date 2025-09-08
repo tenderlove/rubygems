@@ -416,7 +416,7 @@ EOM
   def extract_tar_gz(io, destination_dir, pattern = "*") # :nodoc:
     destination_dir = File.realpath(destination_dir)
 
-    directories = []
+    directories = Set.new
     symlinks = []
 
     open_tar_gz io do |tar|
