@@ -524,10 +524,12 @@ EOM
     _install_location(filename, File.realpath(destination_dir))
   end
 
-  def normalize_path(pathname)
-    if Gem.win_platform?
+  if Gem.win_platform?
+    def normalize_path(pathname)
       pathname.downcase
-    else
+    end
+  else
+    def normalize_path(pathname)
       pathname
     end
   end
