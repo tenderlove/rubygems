@@ -424,7 +424,7 @@ EOM
         full_name = entry.full_name
         next unless File.fnmatch pattern, full_name, File::FNM_DOTMATCH
 
-        destination = install_location full_name, destination_dir
+        destination = _install_location full_name, destination_dir
 
         if entry.symlink?
           link_target = entry.header.linkname
@@ -518,16 +518,7 @@ EOM
   # If +filename+ is not inside +destination_dir+ an exception is raised.
 
   def install_location(filename, destination_dir) # :nodoc:
-    raise Gem::Package::PathError.new(filename, destination_dir) if
-      filename.start_with? "/"
-
-    destination_dir = File.realpath(destination_dir)
-    destination = File.expand_path(filename, destination_dir)
-
-    raise Gem::Package::PathError.new(destination, destination_dir) unless
-      normalize_path(destination).start_with? normalize_path(destination_dir + "/")
-
-    destination
+    _install_location(filename, File.realpath(destination_dir))
   end
 
   def normalize_path(pathname)
@@ -745,6 +736,21 @@ EOM
     raise Gem::Package::FormatError, "#{name} is too big (over #{limit} bytes)" if bytes.size > limit
     bytes
   end
+
+  private
+
+  def _install_location(filename, destination_dir)
+    raise Gem::Package::PathError.new(filename, destination_dir) if
+      filename.start_with? "/"
+
+    destination = File.expand_path(filename, destination_dir)
+
+    raise Gem::Package::PathError.new(destination, destination_dir) unless
+      normalize_path(destination).start_with? normalize_path(destination_dir + "/")
+
+    destination
+  end
+
 end
 
 require_relative "package/digest_io"
