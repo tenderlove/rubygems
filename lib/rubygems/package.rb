@@ -436,8 +436,6 @@ EOM
           symlinks << [full_name, link_target, destination, real_destination]
         end
 
-        FileUtils.rm_rf destination
-
         mkdir =
           if entry.directory?
             destination
@@ -446,15 +444,31 @@ EOM
           end
 
         unless directories.include?(mkdir)
-          FileUtils.mkdir_p mkdir, mode: dir_mode ? 0o755 : (entry.header.mode if entry.directory?)
+          retried = false
+          begin
+            FileUtils.mkdir_p mkdir, mode: dir_mode ? 0o755 : (entry.header.mode if entry.directory?)
+          rescue
+            raise if retried
+            FileUtils.rm_rf destination
+            retried = true
+            retry
+          end
           directories << mkdir
         end
 
         if entry.file?
-          File.open(destination, "wb") { |out|
-            copy_stream(entry.io, out, entry.size)
-            out.chmod file_mode(entry.header.mode) & ~File.umask
-          }
+          retried = false
+          begin
+            File.open(destination, "wb") { |out|
+              copy_stream(entry.io, out, entry.size)
+              out.chmod file_mode(entry.header.mode) & ~File.umask
+            }
+          rescue
+            raise if retried
+            FileUtils.rm_rf destination
+            retried = true
+            retry
+          end
         end
 
         verbose destination
