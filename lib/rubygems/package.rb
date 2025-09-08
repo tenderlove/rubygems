@@ -422,7 +422,10 @@ EOM
     open_tar_gz io do |tar|
       tar.each do |entry|
         full_name = entry.full_name
-        next unless File.fnmatch pattern, full_name, File::FNM_DOTMATCH
+
+        if pattern != "*"
+          next unless File.fnmatch(pattern, full_name, File::FNM_DOTMATCH)
+        end
 
         destination = _install_location full_name, destination_dir
 
