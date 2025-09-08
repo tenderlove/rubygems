@@ -267,7 +267,7 @@ class Gem::Package
 
       tar.add_file_simple file, stat.mode, stat.size do |dst_io|
         File.open file, "rb" do |src_io|
-          copy_stream(src_io, dst_io)
+          copy_stream(src_io, dst_io, stat.size)
         end
       end
     end
@@ -451,8 +451,10 @@ EOM
         end
 
         if entry.file?
-          File.open(destination, "wb") {|out| copy_stream(entry, out) }
-          FileUtils.chmod file_mode(entry.header.mode) & ~File.umask, destination
+          File.open(destination, "wb") { |out|
+            copy_stream(entry.io, out, entry.size)
+            out.chmod file_mode(entry.header.mode) & ~File.umask
+          }
         end
 
         verbose destination
@@ -541,7 +543,7 @@ EOM
   # Opens +io+ as a gzipped tar archive
 
   def open_tar_gz(io) # :nodoc:
-    Zlib::GzipReader.wrap io do |gzio|
+    Zlib::GzipReader.wrap io.io do |gzio|
       tar = Gem::Package::TarReader.new gzio
 
       yield tar
@@ -715,12 +717,12 @@ EOM
   end
 
   if RUBY_ENGINE == "truffleruby"
-    def copy_stream(src, dst) # :nodoc:
-      dst.write src.read
+    def copy_stream(src, dst, size) # :nodoc:
+      dst.write src.read(size)
     end
   else
-    def copy_stream(src, dst) # :nodoc:
-      IO.copy_stream(src, dst)
+    def copy_stream(src, dst, size) # :nodoc:
+      IO.copy_stream(src, dst, size)
     end
   end
 

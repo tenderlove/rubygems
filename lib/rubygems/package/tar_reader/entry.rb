@@ -42,6 +42,8 @@ class Gem::Package::TarReader::Entry
     @read = 0
   end
 
+  attr_reader :io
+
   def check_closed # :nodoc:
     raise IOError, "closed #{self.class}" if closed?
   end
