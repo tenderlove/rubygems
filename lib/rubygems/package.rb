@@ -415,6 +415,7 @@ EOM
 
   def extract_tar_gz(io, destination_dir, pattern = "*") # :nodoc:
     destination_dir = File.realpath(destination_dir)
+    normalized_dest_dir = normalize_path(destination_dir + "/")
 
     directories = Set.new
     symlinks = []
@@ -427,7 +428,7 @@ EOM
           next unless File.fnmatch(pattern, full_name, File::FNM_DOTMATCH)
         end
 
-        destination = _install_location full_name, destination_dir
+        destination = _install_location full_name, destination_dir, normalized_dest_dir
 
         if entry.symlink?
           link_target = entry.header.linkname
@@ -521,7 +522,10 @@ EOM
   # If +filename+ is not inside +destination_dir+ an exception is raised.
 
   def install_location(filename, destination_dir) # :nodoc:
-    _install_location(filename, File.realpath(destination_dir))
+    destination_dir = File.realpath(destination_dir)
+    normalized_dest_dir = normalize_path(destination_dir + "/")
+
+    _install_location(filename, File.realpath(destination_dir), normalized_dest_dir)
   end
 
   if Gem.win_platform?
@@ -744,14 +748,14 @@ EOM
 
   private
 
-  def _install_location(filename, destination_dir)
+  def _install_location(filename, destination_dir, normal_dest)
     raise Gem::Package::PathError.new(filename, destination_dir) if
       filename.start_with? "/"
 
     destination = File.expand_path(filename, destination_dir)
 
     raise Gem::Package::PathError.new(destination, destination_dir) unless
-      normalize_path(destination).start_with? normalize_path(destination_dir + "/")
+      normalize_path(destination).start_with? normal_dest
 
     destination
   end
