@@ -58,7 +58,7 @@ module Bundler
 
       def lines(data)
         return [] if data.nil? || data.empty?
-        lines = data.split("\n")
+        lines = data.split($/)
         header = lines.index("---")
         header ? lines[header + 1..-1] : lines
       end
