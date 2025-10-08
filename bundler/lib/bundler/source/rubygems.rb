@@ -417,6 +417,10 @@ module Bundler
         end
       end
 
+      public def download(spec)
+        fetch_gem_if_possible(spec, nil)
+      end
+
       def fetch_gem_if_possible(spec, previous_spec = nil)
         if spec.remote
           fetch_gem(spec, previous_spec)

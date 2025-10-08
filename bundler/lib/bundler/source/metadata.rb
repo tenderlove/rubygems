@@ -37,6 +37,8 @@ module Bundler
         {}
       end
 
+      def download(spec); end
+
       def install(spec, _opts = {})
         print_using_message "Using #{version_message(spec)}"
         nil

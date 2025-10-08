@@ -358,6 +358,7 @@ class Gem::Version
   # <tt>Gem::Version</tt> or a valid version String return +nil+.
 
   def <=>(other)
+    return 0 if other.equal?(self)
     return self <=> self.class.new(other) if (String === other) && self.class.correct?(other)
 
     return unless Gem::Version === other

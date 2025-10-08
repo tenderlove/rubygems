@@ -172,13 +172,26 @@ module Bundler
       end
     end
 
+    class NativeWrapper
+      attr_accessor :native
+
+      def initialize
+        @native = false
+      end
+    end
+
     # return the specs in the bundler format as an index
     def specs(gem_names, source)
       index = Bundler::Index.new
 
+      native_cache = Hash.new { |h,k| h[k] = NativeWrapper.new }
       fetch_specs(gem_names).each do |name, version, platform, dependencies, metadata|
         spec = if dependencies
-          EndpointSpecification.new(name, version, platform, self, dependencies, metadata).tap do |es|
+          native = native_cache[name]
+          if platform
+            native.native = true
+          end
+          EndpointSpecification.new(name, version, platform, self, dependencies, metadata, native).tap do |es|
             source.checksum_store.replace(es, es.checksum)
           end
         else

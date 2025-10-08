@@ -7,6 +7,7 @@ module Bundler
   class ParallelInstaller
     class SpecInstallation
       attr_accessor :spec, :name, :full_name, :post_install_message, :state, :error
+
       def initialize(spec)
         @spec = spec
         @name = spec.name
@@ -14,6 +15,10 @@ module Bundler
         @state = :none
         @post_install_message = ""
         @error = nil
+      end
+
+      def maybe_compiled?
+        spec.is_a?(EndpointSpecification) && spec.native
       end
 
       def installed?
@@ -106,9 +111,52 @@ module Bundler
       @specs.select(&:failed?)
     end
 
+    def download
+      downloader = Bundler::Worker.new 1, "Downloader", lambda {|installer, worker_num|
+        installer.spec.source.download(installer.spec)
+        installer
+      }
+
+      specs_by_name = {}
+      @specs.each { |spec| specs_by_name[spec.name] = spec }
+
+      compiled = @specs.find_all(&:maybe_compiled?)
+
+      compiled.each { |compiled|
+        # Queue any dependencies first
+        compiled.dependencies.each { |dep|
+          if specs_by_name.key?(dep.name)
+            downloader.enq specs_by_name.delete(dep.name)
+          end
+        }
+        # Then queue the compiled gem
+        specs_by_name.delete(compiled.name)
+        downloader.enq compiled
+      }
+
+      ## Queue up everything else
+      specs_by_name.values.each { |v| downloader.enq v }
+
+      # Tell the worker we're done adding work
+      downloader.finish
+
+      # Queue up installation as gems get downloaded
+      @specs.each { worker_pool.enq downloader.deq }
+
+      # Tell the installer we're done adding work
+      worker_pool.finish
+
+      downloader.stop
+
+      # Block until we're done installing
+      @specs.each { worker_pool.deq }
+      worker_pool.stop
+    end
+
     def install_with_worker
-      enqueue_specs
-      process_specs until finished_installing?
+      download
+      #enqueue_specs
+      #process_specs until finished_installing?
     end
 
     def install_serially
@@ -127,6 +175,7 @@ module Bundler
 
     def do_install(spec_install, worker_num)
       Plugin.hook(Plugin::Events::GEM_BEFORE_INSTALL, spec_install)
+      start = Process.clock_gettime(Process::CLOCK_MONOTONIC, :nanosecond)
       gem_installer = Bundler::GemInstaller.new(
         spec_install.spec, @installer, @standalone, worker_num, @force, @local
       )
@@ -138,6 +187,26 @@ module Bundler
         spec_install.error = "#{message}\n\n#{require_tree_for_spec(spec_install.spec)}"
         spec_install.state = :failed
       end
+
+      finish = Process.clock_gettime(Process::CLOCK_MONOTONIC, :nanosecond)
+      if $vernier
+        $vernier.add_marker(
+          name: "install #{spec_install.name}",
+          start: start,
+          finish: finish,
+          data: { type: "install gem" }
+        )
+        $vernier.add_marker(
+          name: "install #{spec_install.name}",
+          start: start,
+          finish: finish,
+          thread: Thread.main.object_id,
+          data: { type: "install gem" }
+        )
+      else
+        puts "OH NONNONO!!j:w"
+      end
+
       Plugin.hook(Plugin::Events::GEM_AFTER_INSTALL, spec_install)
       spec_install
     end

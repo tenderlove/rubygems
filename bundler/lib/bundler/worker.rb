@@ -44,6 +44,10 @@ module Bundler
       result
     end
 
+    def finish
+      @threads.each { @request_queue.enq POISON }
+    end
+
     def stop
       stop_threads
     end

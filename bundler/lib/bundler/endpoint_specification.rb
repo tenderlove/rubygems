@@ -9,7 +9,7 @@ module Bundler
     attr_writer :dependencies
     attr_accessor :remote, :locked_platform
 
-    def initialize(name, version, platform, spec_fetcher, dependencies, metadata = nil)
+    def initialize(name, version, platform, spec_fetcher, dependencies, metadata, native)
       super()
       @name         = name
       @version      = Gem::Version.create version
@@ -17,12 +17,17 @@ module Bundler
       @spec_fetcher = spec_fetcher
       @dependencies = nil
       @unbuilt_dependencies = dependencies
+      @native = native
 
       @loaded_from          = nil
       @remote_specification = nil
       @locked_platform = nil
 
       parse_metadata(metadata)
+    end
+
+    def native
+      @native.native && platform == "ruby"
     end
 
     def insecurely_materialized?

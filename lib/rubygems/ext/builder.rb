@@ -48,6 +48,7 @@ class Gem::Ext::Builder
       # Pass DESTDIR via command line to override what's in MAKEFLAGS
       cmd = [
         *make_program,
+        "-j",
         *env,
         target,
       ].reject(&:empty?)

@@ -130,6 +130,7 @@ module Gem::Timeout
       end
     end
   end
+  Gem::Timeout.ensure_timeout_thread_created
 
   # We keep a private reference so that time mocking libraries won't break
   # Gem::Timeout.
@@ -174,7 +175,6 @@ module Gem::Timeout
       return scheduler.timeout_after(sec, klass || Error, message, &block)
     end
 
-    Gem::Timeout.ensure_timeout_thread_created
     perform = Proc.new do |exc|
       request = Request.new(Thread.current, sec, exc, message)
       QUEUE_MUTEX.synchronize do
