@@ -27,8 +27,11 @@ module Bundler
 
         Array(options["remotes"]).reverse_each {|r| add_remote(r) }
 
+        @min_age = options["min_age"]
         @lockfile_remotes = @remotes if options["from_lockfile"]
       end
+
+      attr_reader :min_age
 
       def caches
         @caches ||= [cache_path, *Bundler.rubygems.gem_cache]

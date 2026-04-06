@@ -46,6 +46,14 @@ RSpec.describe Bundler::EndpointSpecification do
         )
       end
     end
+
+    context "when the metadata includes created_at" do
+      let(:metadata) { [["created_at", ["2024-01-15T00:00:00Z"]]] }
+
+      it "parses created_at" do
+        expect(spec.created_at).to eq("2024-01-15T00:00:00Z")
+      end
+    end
   end
 
   describe "#required_ruby_version" do

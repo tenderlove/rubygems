@@ -5,7 +5,7 @@ module Bundler
   class EndpointSpecification < Gem::Specification
     include MatchRemoteMetadata
 
-    attr_reader :name, :version, :platform, :checksum
+    attr_reader :name, :version, :platform, :checksum, :created_at
     attr_writer :dependencies
     attr_accessor :remote, :locked_platform
 
@@ -161,6 +161,8 @@ module Bundler
           @required_rubygems_version = Gem::Requirement.new(v)
         when "ruby"
           @required_ruby_version = Gem::Requirement.new(v)
+        when "created_at"
+          @created_at = v.last
         end
       end
     rescue StandardError => e

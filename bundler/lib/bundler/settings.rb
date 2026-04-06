@@ -65,6 +65,7 @@ module Bundler
       gem.linter
       gem.rubocop
       gem.test
+      gem_min_age
       gemfile
       lockfile
       path

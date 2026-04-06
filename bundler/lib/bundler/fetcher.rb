@@ -3,6 +3,7 @@
 require_relative "vendored_persistent"
 require_relative "vendored_timeout"
 require_relative "vendored_securerandom"
+require "time"
 require "zlib"
 
 module Bundler
@@ -175,6 +176,7 @@ module Bundler
     # return the specs in the bundler format as an index
     def specs(gem_names, source)
       index = Bundler::Index.new
+      cutoff = min_age_cutoff(source)
 
       fetch_specs(gem_names).each do |name, version, platform, dependencies, metadata|
         spec = if dependencies
@@ -184,6 +186,15 @@ module Bundler
         else
           RemoteSpecification.new(name, version, platform, self)
         end
+
+        if cutoff && spec.respond_to?(:created_at) && spec.created_at
+          created = Time.iso8601(spec.created_at)
+          if created > cutoff
+            Bundler.ui.debug "Skipping #{spec.full_name} (created #{spec.created_at}, too new for min_age policy)"
+            next
+          end
+        end
+
         spec.source = source
         spec.remote = @remote
         index << spec
@@ -282,6 +293,22 @@ module Bundler
 
     def cis
       @cis ||= Bundler::CIDetector.ci_strings
+    end
+
+    DURATION_UNITS = { "s" => 1, "m" => 60, "h" => 3600, "d" => 86400 }.freeze
+
+    def parse_duration(value)
+      return unless value && !value.empty?
+      match = value.match(/\A(\d+)([smhd])\z/)
+      raise ArgumentError, "Invalid duration: #{value.inspect}. Use a number followed by s, m, h, or d (e.g. 3d)" unless match
+      match[1].to_i * DURATION_UNITS[match[2]]
+    end
+
+    def min_age_cutoff(source)
+      raw = source.respond_to?(:min_age) && source.min_age || Bundler.settings["gem_min_age"]
+      seconds = parse_duration(raw)
+      return unless seconds
+      Time.now - seconds
     end
 
     def connection

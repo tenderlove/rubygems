@@ -228,6 +228,105 @@ RSpec.describe Bundler::Fetcher do
     end
   end
 
+  describe "#parse_duration" do
+    it "parses seconds" do
+      expect(fetcher.send(:parse_duration, "30s")).to eq(30)
+    end
+
+    it "parses minutes" do
+      expect(fetcher.send(:parse_duration, "5m")).to eq(300)
+    end
+
+    it "parses hours" do
+      expect(fetcher.send(:parse_duration, "2h")).to eq(7200)
+    end
+
+    it "parses days" do
+      expect(fetcher.send(:parse_duration, "3d")).to eq(259200)
+    end
+
+    it "returns nil for nil" do
+      expect(fetcher.send(:parse_duration, nil)).to be_nil
+    end
+
+    it "returns nil for empty string" do
+      expect(fetcher.send(:parse_duration, "")).to be_nil
+    end
+
+    it "raises on invalid format" do
+      expect { fetcher.send(:parse_duration, "abc") }.to raise_error(ArgumentError, /Invalid duration/)
+    end
+  end
+
+  describe "#specs min_age filtering" do
+    let(:downloader)  { double(:downloader) }
+    let(:remote)      { double(:remote, cache_slug: "slug", uri: uri, original_uri: nil, anonymized_uri: uri) }
+    let(:compact_index) { double(Bundler::Fetcher::CompactIndex, available?: true, api_fetcher?: true) }
+    let(:source) { double("source", min_age: nil) }
+    let(:checksum_store) { double("checksum_store") }
+
+    before do
+      allow(Bundler::Fetcher::CompactIndex).to receive(:new).and_return(compact_index)
+      allow(Bundler::Fetcher::Dependency).to receive(:new).and_return(double(available?: false, api_fetcher?: true))
+      allow(Bundler::Fetcher::Index).to receive(:new).and_return(double(available?: true, api_fetcher?: false))
+      allow(source).to receive(:checksum_store).and_return(checksum_store)
+      allow(checksum_store).to receive(:replace)
+    end
+
+    it "excludes specs with created_at newer than the min_age cutoff" do
+      recent_time = Time.now.iso8601
+      old_time = (Time.now - 86400 * 10).iso8601
+
+      allow(compact_index).to receive(:specs).and_return([
+        ["old_gem", "1.0.0", nil, [], [["created_at", [old_time]]]],
+        ["new_gem", "1.0.0", nil, [], [["created_at", [recent_time]]]],
+      ])
+      allow(Bundler.settings).to receive(:[]).and_call_original
+      allow(Bundler.settings).to receive(:[]).with("gem_min_age").and_return("3d")
+
+      index = fetcher.specs_with_retry("name", source)
+      names = index.map(&:name)
+      expect(names).to include("old_gem")
+      expect(names).not_to include("new_gem")
+    end
+
+    it "allows specs through when created_at is absent" do
+      allow(compact_index).to receive(:specs).and_return([
+        ["no_date_gem", "1.0.0", nil, [], []],
+      ])
+      allow(Bundler.settings).to receive(:[]).and_call_original
+      allow(Bundler.settings).to receive(:[]).with("gem_min_age").and_return("3d")
+
+      index = fetcher.specs_with_retry("name", source)
+      expect(index.map(&:name)).to include("no_date_gem")
+    end
+
+    it "does no filtering when min_age is not set" do
+      recent_time = Time.now.iso8601
+      allow(compact_index).to receive(:specs).and_return([
+        ["new_gem", "1.0.0", nil, [], [["created_at", [recent_time]]]],
+      ])
+      allow(Bundler.settings).to receive(:[]).and_call_original
+      allow(Bundler.settings).to receive(:[]).with("gem_min_age").and_return(nil)
+
+      index = fetcher.specs_with_retry("name", source)
+      expect(index.map(&:name)).to include("new_gem")
+    end
+
+    it "uses per-source min_age over global setting" do
+      recent_time = Time.now.iso8601
+      allow(compact_index).to receive(:specs).and_return([
+        ["new_gem", "1.0.0", nil, [], [["created_at", [recent_time]]]],
+      ])
+      allow(source).to receive(:min_age).and_return("0s")
+      allow(Bundler.settings).to receive(:[]).and_call_original
+      allow(Bundler.settings).to receive(:[]).with("gem_min_age").and_return("30d")
+
+      index = fetcher.specs_with_retry("name", source)
+      expect(index.map(&:name)).to include("new_gem")
+    end
+  end
+
   describe "#api_fetcher?" do
     let(:downloader)  { double(:downloader) }
     let(:remote)      { double(:remote, cache_slug: "slug", uri: uri, original_uri: nil, anonymized_uri: uri) }
